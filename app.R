@@ -51,13 +51,7 @@ server <- function(input, output) {
             }))
         ), 2)
         
-        paste(area*8, "g per yearecho "# forestgarden" >> README.md
-              git init
-              git add README.md
-              git commit -m "first commit"
-              git branch -M main
-              git remote add origin https://github.com/Athanasiamo/forestgarden.git
-              git push -u origin main")
+        paste(area*8, "g per year")
     })
 }
 
