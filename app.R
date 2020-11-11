@@ -34,7 +34,8 @@ server <- function(input, output) {
                             label = "Nitro need",
                             choices = c("Low", 
                                         "Medium", 
-                                        "High"), selected = "Medium")
+                                        "High"), 
+                            selected = "Medium")
             )
         })
     })
