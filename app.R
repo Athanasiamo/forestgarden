@@ -16,9 +16,9 @@ ui <- dashboardPage(skin = "green",
                    you will need to think about the necessary nutrients your plants need.
                    Trees and shrubs need nitrogen to grow, be healthy, and bear fruit.
                    ")),
-            infoBox(title = "Tree area", htmlOutput("treeArea"), 
+            infoBox(title = "Tree area", htmlOutput("treeArea"), width = 6,
                     fill=TRUE, color = "green", icon = icon("tree")),
-            infoBox(title = "Nitrogen need", textOutput("nitro"), 
+            infoBox(title = "Nitrogen need", textOutput("nitro"), width = 6,
                     fill=TRUE,color = "yellow", icon = icon("atom")),
             column(12,
                    tags$h2("Your garden"),
