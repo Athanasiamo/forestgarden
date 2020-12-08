@@ -92,12 +92,12 @@ get_table <- function(url){
   dplyr::as_tibble(dt)
 }
 
-plant_data <- lapply(plants$url, get_table) %>% 
+data <- lapply(plants$url, get_table) %>% 
   bind_rows() %>% 
   left_join(plants, by="url") %>% 
   select(-samisk_navn, -andre_navn, -kinagresslok, 
          -antall, -formering, -name)
 
 
-write.table(plant_data, here::here("data/plant.tsv"), 
+write.table(data, here::here("data/plant.tsv"), 
             sep = "\t", quote = FALSE, row.names = FALSE)

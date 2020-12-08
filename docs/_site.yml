@@ -2,7 +2,7 @@ name: "docs"
 title: "Inger & Mo's forest garden"
 description: |
   Inger & Mo's forest garden
-output_dir: "_site"
+output_dir: "."
 theme: ingermo.css
 navbar:
   right:

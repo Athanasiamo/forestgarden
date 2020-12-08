@@ -105,6 +105,8 @@ rating <- function(rating, colour = yellow, max_rating = 5, ...) {
 
 
 ```{r}
+source(here::here("R/scrape_efferus_table.R"))
+
 data <- read.table(here::here("data/plant.tsv"), 
                    sep="\t", header = TRUE) %>% 
   select(-frobehandling, -fruktbarhet, 
