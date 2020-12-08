@@ -1,0 +1,13 @@
+name: "docs"
+title: "Inger & Mo's forest garden"
+description: |
+  Inger & Mo's forest garden
+output_dir: "_site"
+theme: ingermo.css
+navbar:
+  right:
+    - text: "Home"
+      href: index.html
+    - text: "Plant overview"
+      href: plant_info.html
+output: distill::distill_article

@@ -1,0 +1,263 @@
+---
+title: "Forest garden plants"
+description: |
+  An overview of out wishes
+---
+
+```{css}
+.l-body{
+  width: 90vw;
+  position: relative;
+  margin-left: -45vw;
+  margin-top: 100px;
+  left: 45%;
+}
+
+.tag {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-weight: 600;
+  font-size: 15px;
+  height: 40px;
+  text-align: center;
+}
+
+.plant-image {
+  object-fit: cover;
+  object-position: 0 100%;
+  display: inline-block;
+  overflow: hidden;
+  
+  width: 100%;
+  height: 100px;
+}
+
+.img {
+  object-fit: contain;
+}
+
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(tidyverse)
+library(reactable)
+library(shiny)
+library(htmltools)
+```
+
+```{r colours}
+green <- "#a6cfba"
+green_dark <- "#637c6f"
+red <- "#df8a8b"
+red_dark <- "#792425"
+yellow <- "#ece8cf"
+yellow_dark <- "#d0c789"
+
+rdylgr <- function(x) rgb(colorRamp(c(red_dark, yellow, green_dark))(x), maxColorValue = 255)
+rdyl <- function(x) rgb(colorRamp(c(red_dark, yellow_dark))(x), maxColorValue = 255)
+ylgr <- function(x) rgb(colorRamp(c(yellow_dark, green_dark))(x), maxColorValue = 255)
+rd <- function(x) rgb(colorRamp(c(red, red_dark))(x), maxColorValue = 255)
+gr <- function(x) rgb(colorRamp(c(green, green_dark))(x), maxColorValue = 255)
+yl <- function(x) rgb(colorRamp(c(yellow, yellow_dark))(x), maxColorValue = 255)
+
+
+normalize <- function(x, y, pal){
+  k <- (x - min(y, na.rm = TRUE)) / (max(y, na.rm = TRUE) - min(y, na.rm = TRUE))
+  na_indx <- which(is.na(x))
+  k[na_indx] <- 0
+  j <- pal(k)
+  j[na_indx] <- "#ffffff"
+  j
+}
+```
+
+
+```{r icons}
+
+get_icon <- function(icon, colour = "grey", size = 2, lib = "font-awesome") {
+  k <- htmltools::tagAppendAttributes(
+    shiny::icon(icon, lib = lib),
+    style = paste0("color:", colour, "; text-align: center;" ),
+    "aria-hidden" = "true"
+  )
+  if(lib == "font-awesome"){
+    k$attribs$class <- sprintf("%s fa-%sx", k$attribs$class, size)
+  }else{
+    k$attribs$`aria-hidden` <- NULL
+  }
+  k
+}
+
+rating <- function(rating, colour = yellow, max_rating = 5, ...) {
+  if(is.na(rating)) rating = 0
+  rounded_rating <- floor(rating + 0.5)  # always round up
+  stars <- lapply(seq_len(max_rating), function(i) {
+    if (i <= rounded_rating) get_icon(colour = colour, ...) else get_icon(colour = "#d2d2d2", ...)
+  })
+  label <- sprintf("%s out of %s", rating, max_rating)
+  div(title = label, "aria-label" = label, role = "img", stars)
+}
+
+```
+
+
+```{r}
+data <- read.table(here::here("data/plant.tsv"), 
+                   sep="\t", header = TRUE) %>% 
+  select(-frobehandling, -fruktbarhet, 
+         -ektotrof, -distance) %>% 
+  mutate(
+    herdighetssone = sapply(herdighetssone, function(x) max(as.numeric(strsplit(x, "-")[[1]]))),
+    jorddekkende_egenskap = case_when(
+      jorddekkende_egenskap == "-" ~ 0, 
+      jorddekkende_egenskap == "x" ~ 0,
+      TRUE ~ as.numeric(jorddekkende_egenskap)
+    ),
+  ) %>% 
+  rename(
+    herdighet = herdighetssone,
+    farer = kjente_farer,
+    type = bladfellende_eviggronn,
+    jordekkende = jorddekkende_egenskap,
+    ytelse = ytelsesevne
+  )
+```
+
+
+```{r}
+reactable(
+  data, 
+  compact = TRUE,
+  filterable = TRUE,
+  pagination = FALSE,
+  columns = list(
+    herdighet = colDef(
+      class = "tag",
+      style = function(value) {
+        list(
+          background = normalize(value, data$herdighet, rdylgr))
+      }),
+    familie = colDef(show = FALSE),
+    latinsk_navn = colDef(show = FALSE),
+    img = colDef(show = FALSE), 
+    url = colDef(show = FALSE), 
+    navn = colDef(
+      minWidth = 200,
+      cell = function(value, index){
+        species <- data$familie[index]
+        species <- if (!is.na(species)) gsub("efamilien|efamilie|familien|familie", "", species) else "Unknown"
+        
+        latin <- data$latinsk_navn[index]
+        latin <- if (!is.na(latin)) latin else "Unknown"
+        
+        img_url <- data$img[index]
+        img_url <- if (!is.na(img_url)){
+          sprintf("http://www.efferus.no/%s", img_url) 
+        }else{
+          "https://comps.canstockphoto.com/question-mark-vines-pot-illustration-drawing_csp72272295.jpg"
+        }
+        img_url <- img(src = img_url, alt = value)
+        
+        tagList(
+          div(style = list(fontWeight = 600), a(value, href=data$url[index])),
+          div(class = "plant-image", img_url),
+          div(style = list(fontSize = 12), species),
+          div(style = list(fontSize = 12, fontStyle = "italic", color = "#727272"), latin)
+        )
+      }
+    ),
+    spiselig = colDef(
+      align = "center",
+      cell = function(value) rating(
+        rating = value, 
+        colour = normalize(value, data$spiselig, ylgr), 
+        icon = "apple-alt", size = 1,
+        max_rating = max(data$spiselig, na.rm = TRUE))
+    ),
+    medisinsk = colDef(
+      minWidth = 120,
+      align = "center",
+      cell = function(value) rating(
+        rating = value, 
+        colour = normalize(value, data$medisinsk, yl), 
+        icon = "hand-holding-medical", size = 1,
+        max_rating = max(data$medisinsk, na.rm = TRUE))
+    ),
+  jordekkende = colDef(
+      minWidth = 120,
+      align = "center",
+      cell = function(value) rating(
+        rating = value, 
+        colour = normalize(value, data$jordekkende, gr), 
+        icon = "spa", size = 1,
+        max_rating = max(data$jordekkende, na.rm = TRUE))
+    ),
+    ytelse = colDef(
+      class = "tag",
+      style = function(value) {
+        list(
+          background = normalize(value, data$ytelse, gr))
+      }),
+    height = colDef(
+      minWidth = 65,
+      class = "tag",
+      style = function(value) {
+        list(
+          background = normalize(value, data$height, rdylgr))
+      }),
+    width = colDef(
+      minWidth = 65,
+      class = "tag",
+      style = function(value) {
+        list(
+          background = normalize(value, data$width, rdylgr))
+      }),
+    skygge_sol_preferanse = colDef(
+      align = "center",
+      cell = function(value) switch(value,
+                                    "Sol" = get_icon("sun", yellow_dark),
+                                    "Sol-lettskygge" = get_icon("cloud-sun", "#a2a2a2"),
+                                    "Sol-Sol-dypskygge" = get_icon("cloud", "#626262")
+      )
+    ),
+    skygge_sol_toleranse = colDef(
+      align = "center",
+      cell = function(value) switch(value,
+                                    "Sol" = get_icon("sun", yellow_dark),
+                                    "Sol-lettskygge" = get_icon("cloud-sun", "#a2a2a2"),
+                                    "Sol-Sol-dypskygge" = get_icon("cloud", "#626262")
+      )
+    ),
+    type = colDef(
+      cell = function(value) { 
+        x <- ifelse(grepl("Bladfellende", value),
+                    "leaf",
+                    ifelse(grepl("Evig", value),
+                           "tree", NA))
+        get_icon(x, green_dark)
+      })
+  ),
+  defaultSorted = list(intention = "asc"),
+  rowStyle = JS("
+    function(rowInfo, state) {
+      // Add horizontal separators between groups when sorting by intention
+      var firstSorted = state.sorted[0]
+      if (firstSorted && firstSorted.id === 'intention') {
+        var nextRow = state.pageRows[rowInfo.viewIndex + 1]
+        if (nextRow && rowInfo.row['intention'] !== nextRow['intention']) {
+          // Use box-shadow to add a 2px border without taking extra space
+          return { boxShadow: 'inset 0 -4px 0 rgba(0, 0, 0, 0.1)' }
+        }
+      }
+    }
+  ")
+)
+```
+
+
+
+
+
