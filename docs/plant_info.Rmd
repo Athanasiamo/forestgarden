@@ -16,40 +16,6 @@ In the case of trees that are grafted, the sizes of these depend on the plant th
 In such cases, the height and width are a product of the main plant, not the fruiting plant. 
 Since our garden is not too large, we have chosen these trees to be small, despite the possibility of having them larger.
 
-```{css}
-.l-body{
-  width: 90vw;
-  position: relative;
-  margin-left: -45vw;
-  margin-top: 100px;
-  left: 45%;
-}
-
-.tag {
-  display: inline-block;
-  padding: 5px 12px;
-  border-radius: 15px;
-  font-weight: 600;
-  font-size: 15px;
-  height: 40px;
-  text-align: center;
-}
-
-.plant-image {
-  object-fit: cover;
-  object-position: 0 100%;
-  display: inline-block;
-  overflow: hidden;
-  
-  width: 100%;
-  height: 100px;
-}
-
-.img {
-  object-fit: contain;
-}
-
-```
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
@@ -112,7 +78,11 @@ rating <- function(rating, colour = yellow, max_rating = 5, ...) {
   if(is.na(rating)) rating = 0
   rounded_rating <- floor(rating + 0.5)  # always round up
   stars <- lapply(seq_len(max_rating), function(i) {
-    if (i <= rounded_rating) get_icon(colour = colour, ...) else get_icon(colour = "#d2d2d2", ...)
+    if (i <= rounded_rating){
+      get_icon(colour = colour, ...)
+    }else{
+      get_icon(colour = "#d2d2d2", ...)
+    }
   })
   label <- sprintf("%s out of %s", rating, max_rating)
   div(title = label, "aria-label" = label, role = "img", stars)
@@ -136,6 +106,15 @@ sticky_style <- function(left = TRUE) {
     style <- c(style, list(right = 0, borderLeft = "1px solid #eee"))
   }
   style
+}
+
+.get_nitro <- function(x){
+  case_when(
+    x == "high" ~ 1L,
+    x == "medium" ~ 2L,
+    x == "low" ~ 3L,
+    TRUE ~ NA_integer_
+  )
 }
 ```
 
@@ -177,13 +156,6 @@ reactable(
   filterable = TRUE,
   pagination = FALSE,
   columns = list(
-    herdighet = colDef(
-      class = "tag",
-      minWidth = 80,
-      style = function(value) {
-        list(
-          background = normalize(value, data$herdighet, rdylgr))
-      }),
     familie = colDef(show = FALSE),
     latinsk_navn = colDef(show = FALSE),
     img = colDef(show = FALSE), 
@@ -213,8 +185,37 @@ reactable(
         )
       }
     ),
+    herdighet = colDef(
+      align = "center",
+      class = "tag",
+      minWidth = 80,
+      style = function(value) {
+        list(
+          background = normalize(value, data$herdighet, rdylgr))
+      }),
+    nitrogen = colDef(
+      align = "center",
+      class = "tag",
+      minWidth = 90,
+      cell = function(value){
+        x <- .get_nitro(value)
+        div(title = x, ifelse(is.na(value), "", value))
+      },
+      style = function(value) {
+        list(
+          background = normalize(.get_nitro(value),
+                                 .get_nitro(data$nitrogen), rdylgr))
+      }),
     intention = colDef(
       minWidth = 110
+    ),
+    windbreaker = colDef(
+      align = "center",
+      minWidth = 120,
+      cell = function(value) 
+        if(!is.na(value)){
+          get_icon("wind", "#388a35")
+        }
     ),
     spiselig = colDef(
       align = "center",
@@ -229,7 +230,7 @@ reactable(
       align = "center",
       cell = function(value) rating(
         rating = value, 
-        colour = normalize(value, data$medisinsk, yl), 
+        colour = normalize(value, data$medisinsk, rdyl), 
         icon = "hand-holding-medical", size = 1,
         max_rating = max(data$medisinsk, na.rm = TRUE))
     ),
@@ -245,11 +246,12 @@ reactable(
     ytelse = colDef(
       cell = function(value) rating(
         rating = value, 
-        colour = normalize(value, data$ytelse, yl), 
+        colour = normalize(value, data$ytelse, ylgr), 
         icon = "certificate", size = 1,
         max_rating = max(data$ytelse, na.rm = TRUE))
-      ),
+    ),
     height = colDef(
+      align = "center",
       minWidth = 65,
       class = "tag",
       style = function(value) {
@@ -257,6 +259,7 @@ reactable(
           background = normalize(value, data$height, rdylgr))
       }),
     width = colDef(
+      align = "center",
       minWidth = 65,
       class = "tag",
       style = function(value) {
@@ -265,28 +268,34 @@ reactable(
       }),
     skygge_sol_preferanse = colDef(
       align = "center",
-      cell = function(value) switch(value,
-                                    "Sol" = get_icon("sun", yellow_dark),
-                                    "Sol-lettskygge" = get_icon("cloud-sun", "#a2a2a2"),
-                                    "Sol-Sol-dypskygge" = get_icon("cloud", "#626262")
-      )
+      cell = function(value) 
+        switch(value,
+               "Sol" = get_icon("sun", yellow_dark),
+               "Sol-lettskygge" = get_icon("cloud-sun", "#a2a2a2"),
+               "Sol-Sol-dypskygge" = get_icon("cloud", "#626262")
+        )
     ),
     skygge_sol_toleranse = colDef(
       align = "center",
-      cell = function(value) switch(value,
-                                    "Sol" = get_icon("sun", yellow_dark),
-                                    "Sol-lettskygge" = get_icon("cloud-sun", "#a2a2a2"),
-                                    "Sol-Sol-dypskygge" = get_icon("cloud", "#626262")
-      )
+      cell = function(value)
+        switch(value,
+               "Sol" = get_icon("sun", yellow_dark),
+               "Sol-lettskygge" = get_icon("cloud-sun", "#a2a2a2"),
+               "Sol-Sol-dypskygge" = get_icon("cloud", "#626262")
+        )
     ),
     type = colDef(
       align = "center",
       cell = function(value) { 
-        x <- ifelse(grepl("Bladfellende", value),
-                    "leaf",
-                    ifelse(grepl("Evig", value),
-                           "tree", NA))
-        get_icon(x, green_dark)
+        x <- case_when(
+          grepl("Blad.*Evig|Evig.*Blad", value) ~ "tree,leaf",
+          grepl("Bladfellende", value) ~ "leaf",
+          grepl("Evig", value) ~ "tree", 
+          TRUE ~ NA_character_
+        )
+        x <- str_split(x, ",")[[1]]
+        x <- lapply(x, get_icon, colour = green)
+        div(title = value, "aria-label" = value, role = "img", x)
       }),
     farer = colDef(
       align = "center", 
@@ -294,7 +303,7 @@ reactable(
       style = function(value) {
         list(
           background = if(is.na(value) | value == "Ingen kjente") green else red)
-        },
+      },
       cell = function(value){
         if(is.na(value) | value == "Ingen kjente"){
           with_tooltip("Nei", "Ingen kjente farer")
