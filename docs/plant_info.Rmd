@@ -1,8 +1,20 @@
 ---
 title: "Forest garden plants"
 description: |
-  An overview of out wishes
+  An overview of our wishes
 ---
+
+
+The information on this page is a combination of manually gathered information about the various plants and automatic scrape of the webpages of [efferus](www.efferus.no). 
+The majority of the information is taken from [efferus](www.efferus.no), which is a great resource of information in Norwegian about plants and trees that can be grown in Norway, with particular focus on forest gardens and permaculture.
+
+All information about height and width are approximations. 
+The size of plants may vary substantially between different grow conditions.
+Height and width here are mainly given as maxima of full potential, and they might grow smaller in your area. 
+
+In the case of trees that are grafted, the sizes of these depend on the plant they are grafted on to. 
+In such cases, the height and width are a product of the main plant, not the fruiting plant. 
+Since our garden is not too large, we have chosen these trees to be small, despite the possibility of having them larger.
 
 ```{css}
 .l-body{
@@ -56,7 +68,7 @@ red_dark <- "#792425"
 yellow <- "#ece8cf"
 yellow_dark <- "#d0c789"
 
-rdylgr <- function(x) rgb(colorRamp(c(red_dark, yellow, green_dark))(x), maxColorValue = 255)
+rdylgr <- function(x) rgb(colorRamp(c(red, yellow, green))(x), maxColorValue = 255)
 rdyl <- function(x) rgb(colorRamp(c(red_dark, yellow_dark))(x), maxColorValue = 255)
 ylgr <- function(x) rgb(colorRamp(c(yellow_dark, green_dark))(x), maxColorValue = 255)
 rd <- function(x) rgb(colorRamp(c(red, red_dark))(x), maxColorValue = 255)
@@ -76,6 +88,11 @@ normalize <- function(x, y, pal){
 
 
 ```{r icons}
+# See the ?tippy documentation for how to customize tooltips
+with_tooltip <- function(value, tooltip, ...) {
+  div(style = "text-decoration: underline; text-decoration-style: dotted; cursor: help",
+      tippy::tippy(value, tooltip, ...))
+}
 
 get_icon <- function(icon, colour = "grey", size = 2, lib = "font-awesome") {
   k <- htmltools::tagAppendAttributes(
@@ -101,35 +118,59 @@ rating <- function(rating, colour = yellow, max_rating = 5, ...) {
   div(title = label, "aria-label" = label, role = "img", stars)
 }
 
+get_value <- function(x, func = max){
+  k <- str_split(x, "-")
+  k <- sapply(k, unique)
+  j <- suppressWarnings(sapply(k, as.numeric))
+  j <- sapply(j, mean)
+  j <- unname(j)
+  # j[is.na(j)] <- 0
+  j
+}
+
+sticky_style <- function(left = TRUE) {
+  style <- list(position = "sticky", background = "#fff", zIndex = 1)
+  if (left) {
+    style <- c(style, list(left = 0, borderRight = "1px solid #eee"))
+  } else {
+    style <- c(style, list(right = 0, borderLeft = "1px solid #eee"))
+  }
+  style
+}
 ```
 
 
-```{r}
+```{r get-data}
 source(here::here("R/scrape_efferus_table.R"))
+data_orig <- data
 
-data <- read.table(here::here("data/plant.tsv"), 
-                   sep="\t", header = TRUE) %>% 
+data <- data_orig %>% 
   select(-frobehandling, -fruktbarhet, 
-         -ektotrof, -distance) %>% 
-  mutate(
-    herdighetssone = sapply(herdighetssone, function(x) max(as.numeric(strsplit(x, "-")[[1]]))),
-    jorddekkende_egenskap = case_when(
-      jorddekkende_egenskap == "-" ~ 0, 
-      jorddekkende_egenskap == "x" ~ 0,
-      TRUE ~ as.numeric(jorddekkende_egenskap)
-    ),
-  ) %>% 
+         -ektotrof, -distance, -soil_type) %>% 
   rename(
     herdighet = herdighetssone,
     farer = kjente_farer,
     type = bladfellende_eviggronn,
     jordekkende = jorddekkende_egenskap,
-    ytelse = ytelsesevne
-  )
+    ytelse = ytelsesevne,
+    nitrogen = needs_nitrogen
+  ) %>% 
+  mutate(
+    herdighet = get_value(herdighet, max),
+    jordekkende = get_value(jordekkende, mean),
+    spiselig = get_value(spiselig),
+    medisinsk = get_value(medisinsk),
+    ytelse = get_value(ytelse),
+    height = get_value(height),
+    width = get_value(width)
+  ) %>%
+  relocate(intention, .before = herdighet) %>% 
+  relocate(height, width, nitrogen, singular, windbreaker,
+           systems, mineral_type, .after = herdighet)
 ```
 
 
-```{r}
+```{r "plant-table"}
 reactable(
   data, 
   compact = TRUE,
@@ -138,6 +179,7 @@ reactable(
   columns = list(
     herdighet = colDef(
       class = "tag",
+      minWidth = 80,
       style = function(value) {
         list(
           background = normalize(value, data$herdighet, rdylgr))
@@ -171,6 +213,9 @@ reactable(
         )
       }
     ),
+    intention = colDef(
+      minWidth = 110
+    ),
     spiselig = colDef(
       align = "center",
       cell = function(value) rating(
@@ -188,7 +233,7 @@ reactable(
         icon = "hand-holding-medical", size = 1,
         max_rating = max(data$medisinsk, na.rm = TRUE))
     ),
-  jordekkende = colDef(
+    jordekkende = colDef(
       minWidth = 120,
       align = "center",
       cell = function(value) rating(
@@ -198,11 +243,12 @@ reactable(
         max_rating = max(data$jordekkende, na.rm = TRUE))
     ),
     ytelse = colDef(
-      class = "tag",
-      style = function(value) {
-        list(
-          background = normalize(value, data$ytelse, gr))
-      }),
+      cell = function(value) rating(
+        rating = value, 
+        colour = normalize(value, data$ytelse, yl), 
+        icon = "certificate", size = 1,
+        max_rating = max(data$ytelse, na.rm = TRUE))
+      ),
     height = colDef(
       minWidth = 65,
       class = "tag",
@@ -234,14 +280,46 @@ reactable(
       )
     ),
     type = colDef(
+      align = "center",
       cell = function(value) { 
         x <- ifelse(grepl("Bladfellende", value),
                     "leaf",
                     ifelse(grepl("Evig", value),
                            "tree", NA))
         get_icon(x, green_dark)
-      })
+      }),
+    farer = colDef(
+      align = "center", 
+      class = "tag",
+      style = function(value) {
+        list(
+          background = if(is.na(value) | value == "Ingen kjente") green else red)
+        },
+      cell = function(value){
+        if(is.na(value) | value == "Ingen kjente"){
+          with_tooltip("Nei", "Ingen kjente farer")
+        }else{
+          with_tooltip("Ja", value)
+        }
+      }
+    ),
+    notes = colDef(
+      align = "center", 
+      class = "tag",
+      style = function(value) {
+        list(
+          background = if(!is.na(value)) yellow_dark else yellow
+        )},
+      cell = function(value){
+        if(is.na(value)){
+          with_tooltip("None", "No comments")
+        }else{
+          with_tooltip("See note", value)
+        }
+      }
+    )
   ),
+  
   defaultSorted = list(intention = "asc"),
   rowStyle = JS("
     function(rowInfo, state) {
@@ -255,7 +333,17 @@ reactable(
         }
       }
     }
-  ")
+  "),
+  defaultColDef = colDef(
+    style = JS("function(rowInfo, colInfo, state) {
+      // Highlight sorted columns
+      for (var i = 0; i < state.sorted.length; i++) {
+        if (state.sorted[i].id === colInfo.id) {
+          return { background: 'rgba(0, 0, 0, 0.03)' }
+        }
+      }
+    }")
+  )
 )
 ```
 
