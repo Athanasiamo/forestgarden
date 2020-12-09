@@ -129,13 +129,14 @@ data <- data_orig %>%
     soil_cover = jorddekkende_egenskap,
     yield = ytelsesevne,
     nitrogen = needs_nitrogen,
-    wind = windbreaker
+    wind = windbreaker,
+    medicinal = medisinsk
   ) %>% 
   mutate(
     herdighet = get_value(herdighet, max),
     soil_cover = get_value(soil_cover, mean),
     spiselig = get_value(spiselig),
-    medisinsk = get_value(medisinsk),
+    medicinal = get_value(medicinal),
     yield = get_value(yield),
     height = get_value(height),
     width = get_value(width)
@@ -150,16 +151,27 @@ data <- data_orig %>%
 reactable(
   elementId = "plant-table",
   data, 
+  rownames = TRUE,
   compact = TRUE,
   filterable = TRUE,
   pagination = FALSE,
+  columnGroups = list(
+    colGroup(name = "edible", columns = c("spiselig", "edible", "yield")),
+    colGroup(name = "light/shadow", columns = c("skygge_sol_preferanse", "skygge_sol_toleranse")),
+    colGroup(name = "needs", columns = c("herdighet", "nitrogen", "pollination", "jordsmonn")),
+    colGroup(name = "dimensions", columns = c("height", "width")),
+    colGroup(name = "system benefits", columns = c("systems", "soil_cover", "wind", "bee_friendly"))
+  ),
+    
   columns = list(
     familie = colDef(show = FALSE),
     latinsk_navn = colDef(show = FALSE),
     img = colDef(show = FALSE), 
     url = colDef(show = FALSE), 
-    plant = colDef(
+    plant = colDef(show = FALSE),
+    .rownames = colDef(
       minWidth = 200,
+      align = "left",
       cell = function(value, index){
         species <- data$familie[index]
         species <- if (!is.na(species)) gsub("efamilien|efamilie|familien|familie", "", species) else "Unknown"
@@ -175,18 +187,23 @@ reactable(
         }
         img_url <- img(src = img_url, alt = value)
         
-        tagList(
-          div(style = list(fontWeight = 600), a(value, href=data$url[index])),
+        x <- tagList(
+          div(style = list(fontWeight = 600), data$plant[index]),
           div(class = "plant-image", img_url),
           div(style = list(fontSize = 12), species),
           div(style = list(fontSize = 12, fontStyle = "italic", color = "#727272"), latin)
         )
+        a(x, href=data$url[index], target = "_blank")
       }
     ),
+    jordsmonn = colDef(
+      name = "soil"
+    ),
     herdighet = colDef(
+      name = "zone",
       align = "center",
       class = "tag",
-      minWidth = 80,
+      minWidth = 70,
       cell = function(value) paste0("H", value),
       style = function(value) {
         list(
@@ -238,6 +255,7 @@ reactable(
       div(title = lab, "aria-label" = lab, role = "img", x)
     }),
     systems = colDef(
+      name = "type",
       minWidth = 150,
       align = "center",
       cell = function(value){
@@ -257,6 +275,7 @@ reactable(
       }
     ),
     spiselig = colDef(
+      name = "degree",
       align = "center",
       cell = function(value) rating(
         rating = value, 
@@ -264,14 +283,17 @@ reactable(
         icon = "apple-alt", size = 1,
         max_rating = max(data$spiselig, na.rm = TRUE))
     ),
-    medisinsk = colDef(
+    edible = colDef(
+      name = "part"
+    ),
+    medicinal = colDef(
       minWidth = 120,
       align = "center",
       cell = function(value) rating(
         rating = value, 
-        colour = normalize(value, data$medisinsk, rdyl), 
+        colour = normalize(value, data$medicinal, rdyl), 
         icon = "hand-holding-medical", size = 1,
-        max_rating = max(data$medisinsk, na.rm = TRUE))
+        max_rating = max(data$medicinal, na.rm = TRUE))
     ),
     soil_cover = colDef(
       minWidth = 120,
@@ -291,22 +313,25 @@ reactable(
         max_rating = max(data$yield, na.rm = TRUE))
     ),
     height = colDef(
+      name = "h",
       align = "center",
-      minWidth = 65,
+      minWidth = 60,
       class = "tag",
       style = function(value) {
         list(
           background = normalize(value, data$height, rdylgr))
       }),
     width = colDef(
+      name = "w",
       align = "center",
-      minWidth = 65,
+      minWidth = 60,
       class = "tag",
       style = function(value) {
         list(
           background = normalize(value, data$width, rdylgr))
       }),
     skygge_sol_preferanse = colDef(
+      name = "preferance",
       align = "center",
       cell = function(value) 
         switch(value,
@@ -316,6 +341,7 @@ reactable(
         )
     ),
     skygge_sol_toleranse = colDef(
+      name = "tolerance",
       align = "center",
       cell = function(value)
         switch(value,
