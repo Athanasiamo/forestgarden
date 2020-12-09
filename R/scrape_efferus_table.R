@@ -9,7 +9,7 @@ get_table <- function(url){
   file <- xml2::read_html(url)
   tables <- rvest::html_nodes(file, "table")
   
-  ind <- which(sapply('width="328" height="453"', grepl, tables))
+  ind <- which(sapply('width="328"', grepl, tables))
   table1 <- rvest::html_table(tables[ind], fill = TRUE)
   
   tab <- as.data.frame(table1)
@@ -94,12 +94,14 @@ get_table <- function(url){
 
 data <- lapply(plants$url, get_table) %>% 
   bind_rows() %>% 
-  left_join(plants, by="url") %>% 
+  right_join(plants, by="url") %>% 
   select(-samisk_navn, -andre_navn, -kinagresslok, 
          -antall, -formering, -navn) %>% 
   rename(navn = name) %>% 
-  distinct()
-
+  distinct() %>% 
+  filter(!grepl("^Alle", navn)) %>% 
+  mutate(navn = tools::toTitleCase(navn),
+         navn = str_trim(navn))
 
 write.table(data, here::here("data/plant.tsv"), 
             sep = "\t", quote = FALSE, row.names = FALSE)

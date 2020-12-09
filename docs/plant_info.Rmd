@@ -193,7 +193,8 @@ reactable(
           div(style = list(fontSize = 12, fontStyle = "italic", color = "#727272"), latin)
         )
         a(x, href=data$url[index], target = "_blank")
-      }
+      },
+      style = list(position = "sticky", left = 0, background = "#fff", zIndex = 1)
     ),
     jordsmonn = colDef(
       name = "soil"
