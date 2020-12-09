@@ -5,7 +5,7 @@ plants <- dplyr::filter(plants, !is.na(name))
 
 get_table <- function(url){
   if(is.na(url)){ return(NULL) }
-
+  
   file <- xml2::read_html(url)
   tables <- rvest::html_nodes(file, "table")
   
@@ -15,17 +15,18 @@ get_table <- function(url){
   tab <- as.data.frame(table1)
   if(nrow(tab) == 0){ return(NULL) }
   
-  tab <- tab[1:15, 1:2]
+  ind <- grep("Fruktbarhet", tab[,1])
+  tab <- tab[1:ind, 1:2]
   names(tab) <- c("key", "value")
   tab <- dplyr::as_tibble(tab)
-
+  
   bilder <- rvest::html_nodes(tables, "img")
   bilder <- rvest::html_attr(bilder, "src")
   bilder <- bilder[!grepl("info|hg.jpg|fb.jpg|paypal", bilder)]
   bilder <- bilder[!grepl("efferus|Home|soppsort.jpg", bilder)]
   bilder <- bilder[!grepl("Oppskrifter|subtop|subbottom", bilder)]
   bilder <- bilder[!grepl("skogshop.jpg|Frørød.jpg", bilder)]
-
+  
   ind <- grep("plantebilder", bilder)
   if(length(ind)){
     arts_bilde <- bilder[ind]
@@ -33,10 +34,10 @@ get_table <- function(url){
   }
   
   .get_img <- function(type, bilder){
-
+    
     type <- match.arg(type, 
-              c("herdighet", "spiselig", 
-                "medisinsk", "sol", "jordsmonn"))
+                      c("herdighet", "spiselig", 
+                        "medisinsk", "sol", "jordsmonn"))
     
     string <- dplyr::case_when(
       type == "herdighet" ~"plantedatabase/herdighet/H.*.jpg",
@@ -45,7 +46,7 @@ get_table <- function(url){
       type == "sol" ~ "bilder/.*.gif",
       type == "jordsmonn" ~ ""
     )
-
+    
     position <- switch(
       type,
       "herdighet" = grep("Herdighet", unlist(tab[,1])),
@@ -54,9 +55,9 @@ get_table <- function(url){
       "sol" = grep("Skygge", unlist(tab[,1])),
       "jordsmonn" = grep("Jordsmonn", unlist(tab[,1]))
     )
-
+    
     x <- grep(string, bilder)
-
+    
     if(length(x) > 0){
       content <- switch(
         type,
@@ -66,6 +67,11 @@ get_table <- function(url){
         "medisinsk" = as.character(readr::parse_number(bilder[x])),
         "spiselig" = as.character(readr::parse_number(bilder[x]))
       )
+      
+      if(length(x) == 3){
+        content <- c(content[1], "Eviggrønn-skygge")
+      }
+      
       bilder <<- bilder[x*-1]  
     } else {
       content <- NA_character_
@@ -77,13 +83,13 @@ get_table <- function(url){
       tab[position,2] <<- paste0(content, collapse="-")
     }
   }
-
+  
   k <- .get_img("herdighet", bilder)
   k <- .get_img("spiselig", bilder)
   k <- .get_img("medisinsk", bilder)
   k <- .get_img("sol", bilder)
   k <- .get_img("jordsmonn", bilder)
-
+  
   dt <- as.data.frame(do.call(cbind, as.list(tab$value)))
   names(dt) <- tab$key
   dt <- janitor::clean_names(dt)
@@ -92,16 +98,29 @@ get_table <- function(url){
   dplyr::as_tibble(dt)
 }
 
+fix_sunlight <- function(x){
+  case_when(
+    x == "Sol" ~ 1,
+    x == "Sol-lettskygge" ~ 2,
+    x == "Sol-moderatskygge" ~ 3,
+    x == "Sol-dypskygge" ~ 4,
+    x == "Eviggrønn-skygge" ~ 5
+  )
+}
+
 data <- lapply(plants$url, get_table) %>% 
   bind_rows() %>% 
   right_join(plants, by="url") %>% 
-  select(-samisk_navn, -andre_navn, -kinagresslok, 
-         -antall, -formering, -navn) %>% 
+  select(-samisk_navn, -andre_navn, -formering, -navn) %>%
   rename(navn = name) %>% 
   distinct() %>% 
   filter(!grepl("^Alle", navn)) %>% 
-  mutate(navn = tools::toTitleCase(navn),
-         navn = str_trim(navn))
+  mutate(
+    navn = tools::toTitleCase(navn),
+    navn = str_trim(navn),
+    skygge_sol_preferanse = fix_sunlight(skygge_sol_preferanse),
+    skygge_sol_toleranse = fix_sunlight(skygge_sol_toleranse)
+  )
 
 write.table(data, here::here("data/plant.tsv"), 
             sep = "\t", quote = FALSE, row.names = FALSE)

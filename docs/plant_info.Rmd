@@ -111,6 +111,30 @@ sticky_style <- function(left = TRUE) {
   style
 }
 
+get_light <- function(value){
+  # if(length(x)==2) x <- 5
+  x <- switch(
+    value,
+    "1" = get_icon("sun", yellow_dark),
+    "2" = get_icon("cloud-sun", "#a2a2a2"),
+    "3" = get_icon("cloud", "#626262"),
+    "4" = list(get_icon("cloud", "#323232", size=1),
+               get_icon("cloud", "#323232", size=1)),
+    "5" = list(get_icon("cloud", "#121212", size=1),
+               get_icon("tree", "#121212", size=1))
+  )
+  
+  tit <- switch(
+    value,
+    "1" = "Sol",
+    "2" = "Lett skygge",
+    "3" = "Moderat skygge",
+    "4" = "Dyp skygge",
+    "5" = "Skygge under eviggrønt"
+  )
+  div(title = tit, "aria-label" = value, role = "img", x)
+}
+
 ```
 
 
@@ -155,13 +179,18 @@ reactable(
   filterable = TRUE,
   pagination = FALSE,
   columnGroups = list(
-    colGroup(name = "edible", columns = c("spiselig", "edible", "yield")),
-    colGroup(name = "light/shadow", columns = c("skygge_sol_preferanse", "skygge_sol_toleranse")),
-    colGroup(name = "needs", columns = c("herdighet", "nitrogen", "pollination", "jordsmonn")),
-    colGroup(name = "dimensions", columns = c("height", "width")),
-    colGroup(name = "system benefits", columns = c("systems", "soil_cover", "wind", "bee_friendly"))
+    colGroup(name = "edible", columns = c("spiselig", "edible", "yield"), 
+             headerStyle = list(textTransform = "uppercase")),
+    colGroup(name = "light/shadow", columns = c("skygge_sol_preferanse", "skygge_sol_toleranse"), 
+             headerStyle = list(textTransform = "uppercase")),
+    colGroup(name = "needs", columns = c("herdighet", "nitrogen", "pollination", "jordsmonn"),
+             headerStyle = list(textTransform = "uppercase")),
+    colGroup(name = "dimensions", columns = c("height", "width"),
+             headerStyle = list(textTransform = "uppercase")),
+    colGroup(name = "system benefits", columns = c("systems", "soil_cover", "wind", "bee_friendly"),
+             headerStyle = list(textTransform = "uppercase"))
   ),
-    
+  
   columns = list(
     familie = colDef(show = FALSE),
     latinsk_navn = colDef(show = FALSE),
@@ -204,7 +233,7 @@ reactable(
       align = "center",
       class = "tag",
       minWidth = 70,
-      cell = function(value) paste0("H", value),
+      cell = function(value) if(!is.na(value)) paste0("H", value),
       style = function(value) {
         list(
           background = normalize(value, data$herdighet, rdylgr))
@@ -243,17 +272,12 @@ reactable(
       align = "center",
       minWidth = 70,
       cell = function(value){
-        x <- get_icon("wind", "#719dc9")
-        lab <- "No windbreaker"
         if(!is.na(value)){
-          x <- list(
-            x,
-            get_icon("grip-lines-vertical", green_dark)
-          )
+          x <- get_icon("wind", "#719dc9")
           lab <- "Windbreaker"
+          div(title = lab, "aria-label" = lab, role = "img", x)
         }
-      div(title = lab, "aria-label" = lab, role = "img", x)
-    }),
+      }),
     systems = colDef(
       name = "type",
       minWidth = 150,
@@ -333,22 +357,12 @@ reactable(
     skygge_sol_preferanse = colDef(
       name = "preferance",
       align = "center",
-      cell = function(value) 
-        switch(value,
-               "Sol" = get_icon("sun", yellow_dark),
-               "Sol-lettskygge" = get_icon("cloud-sun", "#a2a2a2"),
-               "Sol-Sol-dypskygge" = get_icon("cloud", "#626262")
-        )
+      cell = function(value) get_light(value)
     ),
     skygge_sol_toleranse = colDef(
       name = "tolerance",
       align = "center",
-      cell = function(value)
-        switch(value,
-               "Sol" = get_icon("sun", yellow_dark),
-               "Sol-lettskygge" = get_icon("cloud-sun", "#a2a2a2"),
-               "Sol-Sol-dypskygge" = get_icon("cloud", "#626262")
-        )
+      cell = function(value) get_light(value)
     ),
     type = colDef(
       align = "center",
