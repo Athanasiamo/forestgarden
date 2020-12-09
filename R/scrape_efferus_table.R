@@ -96,7 +96,9 @@ data <- lapply(plants$url, get_table) %>%
   bind_rows() %>% 
   left_join(plants, by="url") %>% 
   select(-samisk_navn, -andre_navn, -kinagresslok, 
-         -antall, -formering, -name)
+         -antall, -formering, -navn) %>% 
+  rename(navn = name) %>% 
+  distinct()
 
 
 write.table(data, here::here("data/plant.tsv"), 

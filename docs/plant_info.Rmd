@@ -141,7 +141,7 @@ data <- data_orig %>%
     height = get_value(height),
     width = get_value(width)
   ) %>%
-  relocate(intention, .before = herdighet) %>% 
+  relocate(plant, intention, .before = herdighet) %>% 
   relocate(height, width, nitrogen, pollination, wind,
            systems, .after = herdighet)
 ```
@@ -151,7 +151,6 @@ data <- data_orig %>%
 reactable(
   elementId = "plant-table",
   data, 
-  rownames = TRUE,
   compact = TRUE,
   filterable = TRUE,
   pagination = FALSE,
@@ -168,8 +167,8 @@ reactable(
     latinsk_navn = colDef(show = FALSE),
     img = colDef(show = FALSE), 
     url = colDef(show = FALSE), 
-    plant = colDef(show = FALSE),
-    .rownames = colDef(
+    plant = colDef(
+      name = "",
       minWidth = 200,
       align = "left",
       cell = function(value, index){
@@ -188,7 +187,7 @@ reactable(
         img_url <- img(src = img_url, alt = value)
         
         x <- tagList(
-          div(style = list(fontWeight = 600), data$plant[index]),
+          div(style = list(fontWeight = 600), value),
           div(class = "plant-image", img_url),
           div(style = list(fontSize = 12), species),
           div(style = list(fontSize = 12, fontStyle = "italic", color = "#727272"), latin)
