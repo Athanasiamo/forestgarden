@@ -34,19 +34,22 @@ red_dark <- "#792425"
 yellow <- "#ece8cf"
 yellow_dark <- "#d0c789"
 
-rdylgr <- function(x) rgb(colorRamp(c(red, yellow, green))(x), maxColorValue = 255)
-rdyl <- function(x) rgb(colorRamp(c(red_dark, yellow_dark))(x), maxColorValue = 255)
-ylgr <- function(x) rgb(colorRamp(c(yellow_dark, green_dark))(x), maxColorValue = 255)
-rd <- function(x) rgb(colorRamp(c(red, red_dark))(x), maxColorValue = 255)
-gr <- function(x) rgb(colorRamp(c(green, green_dark))(x), maxColorValue = 255)
-yl <- function(x) rgb(colorRamp(c(yellow, yellow_dark))(x), maxColorValue = 255)
+get_palette <- function(x, colours){
+  rgb(colorRamp(colours)(x), maxColorValue = 255)
+}
 
+rdylgr <- function(x) get_palette(x, colours = c(red, yellow, green)) 
+rdyl <- function(x) get_palette(x, colours = c(red_dark, yellow_dark))
+ylgr <- function(x) get_palette(x, colours = c(yellow_dark, green_dark))
+rd <- function(x) get_palette(x, colours = c(red, red_dark))
+gr <- function(x) get_palette(x, colours = c(green, green_dark))
+yl <- function(x) get_palette(x, colours = c(yellow, yellow_dark))
 
-normalize <- function(x, y, pal){
+normalize <- function(x, y, pal, ...){
   k <- (x - min(y, na.rm = TRUE)) / (max(y, na.rm = TRUE) - min(y, na.rm = TRUE))
   na_indx <- which(is.na(x))
   k[na_indx] <- 0
-  j <- pal(k)
+  j <- pal(k, ...)
   j[na_indx] <- "#ffffff"
   j
 }
@@ -108,14 +111,6 @@ sticky_style <- function(left = TRUE) {
   style
 }
 
-.get_nitro <- function(x){
-  case_when(
-    x == "high" ~ 1L,
-    x == "medium" ~ 2L,
-    x == "low" ~ 3L,
-    TRUE ~ NA_integer_
-  )
-}
 ```
 
 
@@ -127,30 +122,33 @@ data <- data_orig %>%
   select(-frobehandling, -fruktbarhet, 
          -ektotrof, -distance, -soil_type) %>% 
   rename(
+    plant = navn,
     herdighet = herdighetssone,
-    farer = kjente_farer,
+    dangers = kjente_farer,
     type = bladfellende_eviggronn,
-    jordekkende = jorddekkende_egenskap,
-    ytelse = ytelsesevne,
-    nitrogen = needs_nitrogen
+    soil_cover = jorddekkende_egenskap,
+    yield = ytelsesevne,
+    nitrogen = needs_nitrogen,
+    wind = windbreaker
   ) %>% 
   mutate(
     herdighet = get_value(herdighet, max),
-    jordekkende = get_value(jordekkende, mean),
+    soil_cover = get_value(soil_cover, mean),
     spiselig = get_value(spiselig),
     medisinsk = get_value(medisinsk),
-    ytelse = get_value(ytelse),
+    yield = get_value(yield),
     height = get_value(height),
     width = get_value(width)
   ) %>%
   relocate(intention, .before = herdighet) %>% 
-  relocate(height, width, nitrogen, singular, windbreaker,
-           systems, mineral_type, .after = herdighet)
+  relocate(height, width, nitrogen, pollination, wind,
+           systems, .after = herdighet)
 ```
 
 
 ```{r "plant-table"}
 reactable(
+  elementId = "plant-table",
   data, 
   compact = TRUE,
   filterable = TRUE,
@@ -160,7 +158,7 @@ reactable(
     latinsk_navn = colDef(show = FALSE),
     img = colDef(show = FALSE), 
     url = colDef(show = FALSE), 
-    navn = colDef(
+    plant = colDef(
       minWidth = 200,
       cell = function(value, index){
         species <- data$familie[index]
@@ -189,33 +187,74 @@ reactable(
       align = "center",
       class = "tag",
       minWidth = 80,
+      cell = function(value) paste0("H", value),
       style = function(value) {
         list(
           background = normalize(value, data$herdighet, rdylgr))
       }),
+    pollination = colDef(
+      align = "center",
+      minWidth = 100,
+      cell = function(value){
+        if(is.na(value)) value = 1
+        x <- lapply(1:value, function(x) get_icon("seedling", green_dark, size = 1))
+        lab <- paste("Needs", value, "plant(s) for proper pollination and yield.")
+        div(title = lab, "aria-label" = lab, role = "img", x)
+      }
+    ),
     nitrogen = colDef(
       align = "center",
       class = "tag",
       minWidth = 90,
       cell = function(value){
-        x <- .get_nitro(value)
-        div(title = x, ifelse(is.na(value), "", value))
+        x <- case_when(
+          value == 3 ~ "high",
+          value == 2 ~ "medium",
+          value == 1 ~ "low",
+          TRUE ~ ""
+        )
+        div(title = value, x)
       },
       style = function(value) {
         list(
-          background = normalize(.get_nitro(value),
-                                 .get_nitro(data$nitrogen), rdylgr))
+          background = normalize(value, data$nitrogen, get_palette, colours = c(yellow, red)))
       }),
     intention = colDef(
       minWidth = 110
     ),
-    windbreaker = colDef(
+    wind = colDef(
       align = "center",
-      minWidth = 120,
-      cell = function(value) 
+      minWidth = 70,
+      cell = function(value){
+        x <- get_icon("wind", "#719dc9")
+        lab <- "No windbreaker"
         if(!is.na(value)){
-          get_icon("wind", "#388a35")
+          x <- list(
+            x,
+            get_icon("grip-lines-vertical", green_dark)
+          )
+          lab <- "Windbreaker"
         }
+      div(title = lab, "aria-label" = lab, role = "img", x)
+    }),
+    systems = colDef(
+      minWidth = 150,
+      align = "center",
+      cell = function(value){
+        x <- str_split(value, ", ")[[1]]
+        color <- case_when(
+          x == "mineralfix" ~ "#a9c4de",
+          x == "nitrofix" ~ yellow,
+          grepl("soil cover", x) ~ "#c2adad",
+          x == "potassiumfix" ~ green,
+          x == "calciumfix" ~ "#f4f4ed"
+        )
+        if(!is.na(value)){
+          tagList(
+            lapply(1:length(x), function(i) div(x[i], class = "tag", style = glue::glue("background-color: {color[i]};")))
+          )
+        }
+      }
     ),
     spiselig = colDef(
       align = "center",
@@ -234,21 +273,22 @@ reactable(
         icon = "hand-holding-medical", size = 1,
         max_rating = max(data$medisinsk, na.rm = TRUE))
     ),
-    jordekkende = colDef(
+    soil_cover = colDef(
       minWidth = 120,
       align = "center",
       cell = function(value) rating(
         rating = value, 
-        colour = normalize(value, data$jordekkende, gr), 
+        colour = normalize(value, data$soil_cover, gr), 
         icon = "spa", size = 1,
-        max_rating = max(data$jordekkende, na.rm = TRUE))
+        max_rating = max(data$soil_cover, na.rm = TRUE))
     ),
-    ytelse = colDef(
+    yield = colDef(
+      align = "center",
       cell = function(value) rating(
         rating = value, 
-        colour = normalize(value, data$ytelse, ylgr), 
+        colour = normalize(value, data$yield, ylgr), 
         icon = "certificate", size = 1,
-        max_rating = max(data$ytelse, na.rm = TRUE))
+        max_rating = max(data$yield, na.rm = TRUE))
     ),
     height = colDef(
       align = "center",
@@ -297,7 +337,7 @@ reactable(
         x <- lapply(x, get_icon, colour = green)
         div(title = value, "aria-label" = value, role = "img", x)
       }),
-    farer = colDef(
+    dangers = colDef(
       align = "center", 
       class = "tag",
       style = function(value) {
@@ -306,9 +346,9 @@ reactable(
       },
       cell = function(value){
         if(is.na(value) | value == "Ingen kjente"){
-          with_tooltip("Nei", "Ingen kjente farer")
+          with_tooltip("No", "Ingen kjente farer")
         }else{
-          with_tooltip("Ja", value)
+          with_tooltip("Yes", value)
         }
       }
     ),
