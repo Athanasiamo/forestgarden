@@ -14,3 +14,11 @@ knitr::opts_chunk$set(echo = FALSE)
 
 ```
 
+We are planning a forest garden!
+
+And in this planning we need some resources on what we need and what we want.
+Here we are adding incrementally information as we decide and explore what we will bring to our garden.
+
+
+![](img/tomt.png)
+![](img/design.png)
