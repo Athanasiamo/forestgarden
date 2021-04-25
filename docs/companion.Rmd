@@ -1,0 +1,155 @@
+---
+title: "Compaion planting"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(rvest)
+library(tidyverse)
+# devtools::install_github("mattflor/chorddiag")
+library(chorddiag)
+
+rm_cites <- function(x){
+  gsub("\\[|\\]|[0-9]", "", x)
+}
+
+fix_tables <- function(tab){
+  nms <- tab[1,]
+  tab <- tab[-1,]
+  names(tab) <- nms
+  tab <- as_tibble(tab)
+  tab <- mutate(tab, across(everything(), rm_cites))
+  tab <- janitor::clean_names(tab)
+  tab <- filter(tab, !grepl("Commmon name", common_name))
+  mutate(tab, across(everything(), tolower))
+}
+
+url <- "https://en.wikipedia.org/wiki/List_of_companion_plants"
+webpage <- read_html(url)
+
+table <- webpage %>% 
+  html_nodes("table") %>% 
+  html_table(header=TRUE, fill = TRUE)
+table[[7]] <- NULL
+table[[6]] <- NULL
+
+nms <- lapply(table, names)
+names(table) <- tolower(unique(unlist(nms)))
+table <- lapply(table, fix_tables)
+```
+
+
+## Samplanting
+Noen sider om samplanting:
+
+- [Bakkane](http://bakkane.blogspot.com/2009/05/samplanting-i-kjkkenhagen.html)  
+- [Grønne saker](http://gronnesaker.blogspot.com/2010/04/samplanting-i-kjkkenhagen.html)  
+- [wikipedia](https://en.wikipedia.org/wiki/List_of_companion_plants)  
+
+![](https://media.treehugger.com/assets/images/2018/05/companion-planting.jpg.860x0_q70_crop-smart.jpg)
+
+```{r}
+bind_rows(table, .id = "class") %>% 
+  filter(common_name != "Common name") %>% 
+  DT::datatable(filter = "top")
+```
+
+```{r out.height = "500px"}
+library(chorddiag)
+
+make_chord <- function(table, type, class, ...){
+  # browser()
+  tab <- bind_rows(table, .id = "class") %>% 
+    filter(class == {{class}},
+           common_name != "common name") %>% 
+    separate_rows({{type}}, sep = ",") %>% 
+    mutate(
+      across(everything(), ~ str_remove_all(.x, "citation needed")),
+      across(everything(), ~ gsub("^ ", "", .x))
+      ) %>% 
+    group_by(common_name, {{type}}) %>% 
+    tally() %>% 
+    ungroup() %>% 
+    filter(!is.na({{type}}), 
+           {{type}} != "") %>% 
+    transmute(
+      nams_1 = common_name,
+      nams_2 = {{type}},
+      n
+    ) %>% 
+    pivot_wider(names_from = nams_2,
+                values_from = n, 
+                values_fill = 0)
+  tabm = as.matrix(tab[,-1])
+  row.names(tabm) = tab$nams_1
+
+  chorddiag(tabm, type = "bipartite", showTicks = FALSE, 
+            groupColors = viridis::viridis_pal()(nrow(tab)), ...)
+}
+
+```
+
+# Helps
+## vegetables
+```{r}
+make_chord(table, helps, "vegetables" )
+```
+
+## fruit
+```{r}
+make_chord(table, helps, "fruit" )
+```
+
+## herbs
+```{r}
+make_chord(table, helps, "herbs" )
+```
+
+## flowers
+```{r}
+make_chord(table, helps, "flowers" )
+```
+
+
+# Helped by
+## vegetables
+```{r}
+make_chord(table, helped_by, "vegetables" )
+```
+
+## fruit
+```{r}
+make_chord(table, helped_by, "fruit" )
+```
+
+## herbs
+```{r}
+make_chord(table, helped_by, "herbs" )
+```
+
+## flowers
+```{r}
+make_chord(table, helped_by, "flowers" )
+```
+
+
+# Avoid
+## vegetables
+```{r}
+make_chord(table, avoid, "vegetables" )
+```
+
+## fruit
+```{r}
+make_chord(table, avoid, "fruit" )
+```
+
+## herbs
+```{r}
+make_chord(table, avoid, "herbs" )
+```
+
+## flowers
+```{r}
+make_chord(table, avoid, "flowers" )
+```
