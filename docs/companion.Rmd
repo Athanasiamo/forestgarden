@@ -3,7 +3,7 @@ title: "Compaion planting"
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, error = FALSE)
 library(rvest)
 library(tidyverse)
 # devtools::install_github("mattflor/chorddiag")
@@ -87,7 +87,6 @@ make_chord <- function(which, table, ...){
               tab$name)
   names(nms)[2] <- which
   dimnames(tabm) <- nms
-  browser()
   chorddiag(tabm, 
             type = "bipartite", 
             showTicks = FALSE, 
