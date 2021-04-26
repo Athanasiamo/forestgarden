@@ -38,118 +38,118 @@ names(table) <- tolower(unique(unlist(nms)))
 table <- lapply(table, fix_tables)
 ```
 
+This page is scraped from the [wikipedia entry on companion planting](https://en.wikipedia.org/wiki/List_of_companion_plants).  
 
-## Samplanting
-Noen sider om samplanting:
+## Some resources on companion planting
+- [Bakkane (No)](http://bakkane.blogspot.com/2009/05/samplanting-i-kjkkenhagen.html)  
+- [Grønne saker (No)](http://gronnesaker.blogspot.com/2010/04/samplanting-i-kjkkenhagen.html)  
+- [wikipedia (Eng)](https://en.wikipedia.org/wiki/List_of_companion_plants)  
 
-- [Bakkane](http://bakkane.blogspot.com/2009/05/samplanting-i-kjkkenhagen.html)  
-- [Grønne saker](http://gronnesaker.blogspot.com/2010/04/samplanting-i-kjkkenhagen.html)  
-- [wikipedia](https://en.wikipedia.org/wiki/List_of_companion_plants)  
 
-![](https://media.treehugger.com/assets/images/2018/05/companion-planting.jpg.860x0_q70_crop-smart.jpg)
+<!-- ```{r} switch to reactable-->
+<!-- bind_rows(table, .id = "class") %>%  -->
+<!--   filter(common_name != "Common name") %>%  -->
+<!--   DT::datatable(filter = "top") -->
+<!-- ``` -->
 
 ```{r}
-bind_rows(table, .id = "class") %>% 
-  filter(common_name != "Common name") %>% 
-  DT::datatable(filter = "top")
-```
-
-```{r out.height = "500px"}
 library(chorddiag)
 
-make_chord <- function(table, type, class, ...){
-  # browser()
-  tab <- bind_rows(table, .id = "class") %>% 
-    filter(class == {{class}},
-           common_name != "common name") %>% 
-    separate_rows({{type}}, sep = ",") %>% 
+make_chord <- function(which, table, ...){
+  cols <- c("helps", "helped_by", "avoid", "attracts", "repels_distracts")
+  col_pal <- stats::setNames(viridis::viridis(length(cols)),
+                             gsub("_", " ", cols))
+                   
+  tabl <- bind_rows(table, .id = "class") %>% 
+    filter(common_name == which) %>% 
+    pivot_longer(one_of(c(cols))) %>% 
+    separate_rows(value, sep = ",") %>% 
     mutate(
       across(everything(), ~ str_remove_all(.x, "citation needed")),
-      across(everything(), ~ gsub("^ ", "", .x))
-      ) %>% 
-    group_by(common_name, {{type}}) %>% 
+      across(everything(), ~ gsub("^ ", "", .x)),
+      across(everything(), ~ gsub(" |_", " ", .x))
+    ) %>% 
+    group_by(common_name, name, value) %>% 
     tally() %>% 
     ungroup() %>% 
-    filter(!is.na({{type}}), 
-           {{type}} != "") %>% 
-    transmute(
-      nams_1 = common_name,
-      nams_2 = {{type}},
-      n
-    ) %>% 
-    pivot_wider(names_from = nams_2,
+    filter(!is.na(value), 
+           n != "",
+           value != "") %>% 
+    arrange(name, value)
+  
+  tab <- tabl %>% 
+    pivot_wider(names_from = value,
                 values_from = n, 
                 values_fill = 0)
-  tabm = as.matrix(tab[,-1])
-  row.names(tabm) = tab$nams_1
-
-  chorddiag(tabm, type = "bipartite", showTicks = FALSE, 
-            groupColors = viridis::viridis_pal()(nrow(tab)), ...)
+  tabm = t(as.matrix(tab[,c(-1, -2)]))
+  
+  nms <- list(rownames(tabm),
+              tab$name)
+  names(nms)[2] <- which
+  dimnames(tabm) <- nms
+  browser()
+  chorddiag(tabm, 
+            type = "bipartite", 
+            showTicks = FALSE, 
+            groupColors = c(
+              colorRampPalette(c("grey90", "grey10"))(nrow(tabm)), 
+              unname(col_pal[nms[[2]]%in% names(col_pal)])
+            ),
+            ...)
 }
-
 ```
 
-# Helps
-## vegetables
+# Vegetables
 ```{r}
-make_chord(table, helps, "vegetables" )
+p <- table$vegetables %>% 
+  pull(common_name) %>% 
+  unique() %>% 
+  lapply(make_chord, table = table)
+```
+```{r}
+htmltools::tagList(p)
 ```
 
-## fruit
+# Fruit
 ```{r}
-make_chord(table, helps, "fruit" )
+p <- table$fruit %>% 
+  pull(common_name) %>% 
+  unique() %>% 
+  lapply(make_chord, table = table)
+```
+```{r}
+htmltools::tagList(p)
 ```
 
-## herbs
+# Herbs
 ```{r}
-make_chord(table, helps, "herbs" )
+p <- table$herbs %>% 
+  pull(common_name) %>% 
+  unique() %>% 
+  lapply(make_chord, table = table)
+```
+```{r}
+htmltools::tagList(p)
 ```
 
-## flowers
+# Flowers
 ```{r}
-make_chord(table, helps, "flowers" )
+p <- table$flowers %>% 
+  pull(common_name) %>% 
+  unique() %>% 
+  lapply(make_chord, table = table)
+```
+```{r}
+htmltools::tagList(p)
 ```
 
-
-# Helped by
-## vegetables
+# Other
 ```{r}
-make_chord(table, helped_by, "vegetables" )
+p <- table$herbs %>% 
+  pull(common_name) %>% 
+  unique() %>% 
+  lapply(make_chord, table = table)
 ```
-
-## fruit
 ```{r}
-make_chord(table, helped_by, "fruit" )
-```
-
-## herbs
-```{r}
-make_chord(table, helped_by, "herbs" )
-```
-
-## flowers
-```{r}
-make_chord(table, helped_by, "flowers" )
-```
-
-
-# Avoid
-## vegetables
-```{r}
-make_chord(table, avoid, "vegetables" )
-```
-
-## fruit
-```{r}
-make_chord(table, avoid, "fruit" )
-```
-
-## herbs
-```{r}
-make_chord(table, avoid, "herbs" )
-```
-
-## flowers
-```{r}
-make_chord(table, avoid, "flowers" )
+htmltools::tagList(p)
 ```
