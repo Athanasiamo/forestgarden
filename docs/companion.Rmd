@@ -56,22 +56,25 @@ This page is scraped from the [wikipedia entry on companion planting](https://en
 library(chorddiag)
 
 make_chord <- function(which, table, ...){
-  cols <- c("helps", "helped_by", "avoid", "attracts", "repels_distracts")
-  col_pal <- stats::setNames(viridis::viridis(length(cols)),
-                             gsub("_", " ", cols))
-                   
+  cols <- c("helps", "helped_by", "attracts", "repels_distracts", "avoid")
+  col_pal <- stats::setNames(
+    viridis::viridis(length(cols)),
+    gsub("_", " ", cols))
+  
   tabl <- bind_rows(table, .id = "class") %>% 
     filter(common_name == which) %>% 
     pivot_longer(one_of(c(cols))) %>% 
     separate_rows(value, sep = ",") %>% 
     mutate(
       across(everything(), ~ str_remove_all(.x, "citation needed")),
-      across(everything(), ~ gsub("^ ", "", .x)),
-      across(everything(), ~ gsub(" |_", " ", .x))
+      across(everything(), ~ gsub("-|^ ", "", .x)),
+      across(everything(), ~ gsub(" |_", " ", .x)),
+      across(everything(), ~ str_wrap(.x, 10))
     ) %>% 
     group_by(common_name, name, value) %>% 
     tally() %>% 
     ungroup() %>% 
+    unique() %>% 
     filter(!is.na(value), 
            n != "",
            value != "") %>% 
@@ -87,18 +90,23 @@ make_chord <- function(which, table, ...){
               tab$name)
   names(nms)[2] <- which
   dimnames(tabm) <- nms
+  # browser()
   chorddiag(tabm, 
             type = "bipartite", 
             showTicks = FALSE, 
             groupColors = c(
               colorRampPalette(c("grey90", "grey10"))(nrow(tabm)), 
-              unname(col_pal[nms[[2]]%in% names(col_pal)])
+              unname(col_pal[match(nms[[2]], names(col_pal))])
             ),
             ...)
 }
 ```
 
-# Vegetables
+# Chord diagram of companion plants
+
+Hover/click on the connections to see the entire labels, for the ones with quite long labels.
+
+## Vegetables
 ```{r}
 p <- table$vegetables %>% 
   pull(common_name) %>% 
