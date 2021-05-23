@@ -1,0 +1,24 @@
+frukt	plante	type	forkultur	direkte	innhøsting	spiretemperatur	sådybde	radavstand	planteavstand
+agurk	slangeagurk	suyo long	april-mai		juli	20	1,5	75	50
+belg	sukkerert	engelsk sabel	april-mai	mai-juni	juli-september	15	3,4	100	5
+blomst	soksikke	miks	april	april-mai	august-september		1	30	30
+køl	mangold	rainbow	april	mai-juni		15	1	40	25
+køl	grønnkøl	roter grønkohl	mars-mai			15	1	50	50
+løk	fennikel	perfektion	mars-mai	mai-juni		15	1	50	25
+løk	pipeløk	allium fistulosum	mars-april			12	1	30	30
+rot	gulrot	oxhella		april-mai	august-oktober	12	1	50	4
+rot	persillerot	osborne		april-mai	september-november	15	1	50	5
+rot	rødbet	burpees golden		mai-juni	august-oktober	15	2	45	7
+rot	gulrot	cormic purple		april-mai	august-oktober	12	1	50	4
+rot	gultrot	jaune du doubs		april-mai	august-oktober	12	1	40	4
+rot	reddik	zlata		mai-juli	juni-august	12	1	30	3
+salat	hodesalat	merveille	mars-juli		august-september	20	0,5	30	30
+salat	asiasalat	fargemiks		april-august	mai-september	12	0,5	25	3
+salat	plukksalat	babyleafblanding		april-juli	mai-august	15	0,5	25	1
+salat	hjertesalat	little gem	mars-juli		april-august	20	0,5	25	25
+squash	gresskar	red kuri	april-mai		august-oktober	20	2	100	100
+squash	gresskar	spagetti	april-mai		august-september	20	2	100	100
+squash	gresskar	hokkaido	april-mai		august-oktober	20	2	100	100
+squash	zucchini	zuboda	april-mai		juli-september	20	2	100	100
+tomat	krukketomat	bogus fruchta	februar-mars		mai-juni	20	0,5	75	50
+tomat	tomat	red zebra	februar-mars		mai-juni	20	0,5	75	50

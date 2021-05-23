@@ -1,0 +1,139 @@
+---
+title: "Sow guide"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE, 
+  warning = FALSE, 
+  message = FALSE,
+  # out.width='\\textwidth', 
+  out.width = "100%",
+  fig.height = 8, 
+  fig.align='center')
+options(knitr.kable.NA = '')
+library(grid)
+library(tidyverse)
+
+PAL <- c(innhøsting = "#f3c58f", 
+         direkte = "#9b4c38", 
+         forkultur = "#747c24")
+
+year = tibble(
+  month = c("januar", "februar", "mars", "april", "mai", "juni", 
+            "juli", "august", "september", "oktober", "november", "desember"),
+  no = 1:12,
+  n_days = rep(c(31, 30), 6)
+)
+year$n_days[2] = 28
+
+year_days <- year %>% 
+  mutate(
+    data = list(data.frame(
+      days = 1:n_days
+    ))
+  ) %>% 
+  unnest(data)
+
+year_breaks <- year_days %>% 
+  group_by(month) %>% 
+  summarise(min = min(n_days), 
+            max = max(n_days),
+            mean = mean(n_days)) %>% 
+  arrange(min)
+
+tt <- lubridate::today()
+tt <- year_days %>% 
+  filter(no == lubridate::month(tt), 
+         days == lubridate::day(tt)) %>%
+  pull(n_days)
+
+data <- read_tsv(here::here(
+  "data/planteoversikt.tsv"
+)) %>% 
+  separate(forkultur,
+           c("forkultur_start", "forkultur_slutt")) %>% 
+  separate(direkte, 
+           c("direkte_start", "direkte_slutt")) %>% 
+  separate(innhøsting, 
+           c("innhøsting_start", "innhøsting_slutt")) %>% 
+  pivot_longer(contains("_"),
+               names_to = "tid", 
+               values_to = "month") %>% 
+  separate(tid, c("sow", "tid")) %>% 
+  filter(!is.na(month)) %>% 
+  distinct() %>% 
+  filter(!is.na(month)) %>% 
+  arrange(plante, type)
+
+data3 <- data %>% 
+  select(type, plante) %>%
+  distinct() %>% 
+  group_by_all() %>% 
+  nest() %>% 
+  mutate(data  = map(data, ~year)) %>% 
+  unnest() %>% 
+  left_join(data %>% select(type, plante, tid, sow, month)) %>% 
+  mutate(tid = case_when(
+    tid == "start" ~ 1, 
+    tid == "slutt" ~ 0)) %>% 
+  arrange(plante, type, no, sow) %>% 
+  #group_by(type, plante, sow) %>% 
+  fill(tid:sow) %>% 
+  rename(idx = tid) %>% 
+  left_join(select(data, 
+                   type, plante, 
+                   tid, sow, month)) %>% 
+  arrange(plante, type, no, sow) %>% 
+  mutate(idx = case_when(
+    idx == 1 ~ 1, 
+    tid == "slutt" ~ 1,
+    TRUE ~ 0),
+    sow = ifelse(idx == 1, sow, NA)) %>% 
+  select(-tid) %>% 
+  filter(!is.na(sow)) %>% 
+  group_by_at(vars(type, plante, sow)) %>% 
+  nest() %>% 
+  mutate(data = map(data,
+                    ~ full_join(.x, 
+                                select(year_days, -n_days), 
+                                by = c("month", "no")) %>% 
+                      arrange(n_days))) %>% 
+  unnest() %>% 
+  left_join(select(data, plante, frukt)) %>% 
+  mutate(month = factor(month, levels = year$month)) %>% 
+  ungroup()
+```
+
+
+```{r}
+data3 %>% 
+  ggplot(aes(y = paste0(plante, ": ", type), 
+             x = n_days, 
+             group = sow, 
+             fill = ifelse(idx==1, sow, NA))) + 
+  geom_tile(position="dodge", 
+            width=.5) + 
+  # geom_hline(aes(yintercept = tt) )+ 
+  facet_grid(frukt~month,
+             scales = "free",
+             space = "free", ) +
+  labs(y = "", 
+       fill = "") +
+  theme(panel.spacing = unit(-0.35, "lines"),
+        panel.border = element_rect(colour="darkgrey", fill="transparent"),
+        axis.text.x = element_blank()) +
+  scale_fill_manual(values = PAL,
+                    na.value="transparent")
+```
+
+
+
+```{r}
+data %>%
+  filter(sow != "") %>%
+  group_by_at(vars(-month, -tid)) %>%
+  summarise(period = paste(month, collapse="-")) %>%
+  spread(sow, period) %>%
+  knitr::kable(booktabs = T)
+```
